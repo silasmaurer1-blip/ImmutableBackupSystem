@@ -1,0 +1,157 @@
+# Test-Protokoll: Immutable Backup System
+
+**Projekt:** Immutable Backups als Ransomware-Abwehr
+**Autor:** Silas Maurer
+**Datum:** September 2026
+**Status:** Alle durchgeführten Funktionstests erfüllt (4/4)
+
+---
+
+## Testumgebung
+
+| Element | Wert |
+|---|---|
+| OS | Windows 11 (Build 26200) |
+| Prozessor | Intel Core i7-13700H |
+| RAM | 32 GB DDR4 |
+| Speicher | NVMe-SSD |
+| Java | JDK 21 LTS |
+
+---
+
+## Funktionale Tests
+
+### TEST-01: Backup und Recovery
+
+**Ziel:** Erstellung eines Backups und erfolgreiche Wiederherstellung der gesicherten Datei.
+
+**Durchführung:**
+1. Testdatei mit 10 MiB erstellt.
+2. `BackupEngine.createBackup()` ausgeführt.
+3. `RecoveryService.recoverLatestVersion()` aufgerufen.
+4. Ursprüngliche und wiederhergestellte Datei verglichen.
+
+**Resultat:**
+- Backup wurde erstellt.
+- Read-only-Attribut wurde gesetzt.
+- SHA-256-Hashwerte stimmten überein.
+- Recovery wurde erfolgreich durchgeführt.
+- Wiederhergestellte Datei entsprach der ursprünglichen Datei.
+
+**Ergebnis:** Erfüllt
+
+---
+
+### TEST-02: Manipulationserkennung
+
+**Ziel:** Erkennung einer nachträglichen Veränderung einer Sicherungsdatei und Verhinderung der Wiederherstellung.
+
+**Durchführung:**
+1. Backup erstellt.
+2. Backup-Datei mit Zufallsdaten überschrieben, um eine nachträgliche Manipulation zu simulieren.
+3. Recovery versucht.
+
+**Resultat:**
+- Abweichung zwischen berechnetem und gespeichertem SHA-256-Hash erkannt.
+- Exception ausgelöst und Recovery abgebrochen.
+- Manipulation über die Integritätsprüfung erkannt.
+
+**Ergebnis:** Erfüllt
+
+---
+
+### TEST-03: Betriebssystembasierter Schreibschutz
+
+**Ziel:** Überprüfung, ob ein Schreibversuch auf eine geschützte Sicherungsdatei unter den gewählten Testbedingungen verhindert wird.
+
+**Durchführung:**
+1. Backup erstellt und mit Read-only-Attribut versehen.
+2. Schreiboperation auf die Sicherungsdatei versucht.
+3. Auftreten einer Zugriffsausnahme und Zustand der Datei überprüft.
+
+**Resultat:**
+- Schreibzugriff blockiert.
+- `AccessDeniedException` ausgelöst.
+- Datei unverändert.
+- Read-only-Attribut weiterhin gesetzt.
+
+**Ergebnis:** Erfüllt
+
+*Hinweis: Der Test belegt den unter Windows getesteten Dateisystem-Schreibschutz, stellt jedoch keinen Nachweis für ein technisch erzwungenes WORM-System dar.*
+
+---
+
+### TEST-04: Versionierung
+
+**Ziel:** Überprüfung, ob mehrere Sicherungsversionen einer Datei getrennt gespeichert werden können.
+
+**Durchführung:**
+1. Datei erstmals gesichert.
+2. Datei unter einem anderen Namen erneut gesichert.
+3. Inhalt des Backup-Verzeichnisses überprüft.
+
+**Resultat:**
+- Beide Sicherungen wurden erstellt.
+- Die Sicherungen wurden unter unterschiedlichen Dateinamen gespeichert.
+- Beide Dateien waren getrennt im Backup-Verzeichnis vorhanden.
+
+**Ergebnis:** Erfüllt
+
+---
+
+## Funktionale Gesamtübersicht
+
+| Test | Szenario | Erwartung | Ergebnis |
+|---|---|---|---|
+| TEST-01 | Backup und Recovery | Backup wird erstellt und nach erfolgreicher Hashprüfung wiederhergestellt | Erfüllt |
+| TEST-02 | Manipuliertes Backup | Hash-Abweichung wird erkannt und Recovery wird abgebrochen | Erfüllt |
+| TEST-03 | Schreibversuch auf geschütztes Backup | Schreibzugriff wird unter den Testbedingungen abgewiesen | Erfüllt |
+| TEST-04 | Zwei Sicherungsversionen | Beide Versionen werden getrennt gespeichert | Erfüllt |
+
+*Tabelle: Funktionale Tests des Prototyps*
+
+Die Tests zeigen, dass die wesentlichen Funktionen des entwickelten Prototyps unter den gewählten Testbedingungen wie vorgesehen arbeiten. Bei TEST-04 wurden zwei Sicherungsversionen mit unterschiedlichen Dateinamen erstellt, die anschließend getrennt im Backup-Verzeichnis vorlagen.
+
+---
+
+## Performance
+
+Die Laufzeitmessungen wurden auf einem Testsystem mit Intel Core i7-13700H, NVMe-SSD und JDK 21 durchgeführt. Für jede Dateigröße wurden drei Messungen durchgeführt; angegeben sind jeweils die arithmetischen Mittelwerte.
+
+| Dateigröße | Ø Backup-Zeit | Ø Recovery-Zeit |
+|---|---|---|
+| 1 MiB | 91,610 ms | 21,554 ms |
+| 10 MiB | 34,572 ms | 20,727 ms |
+| 100 MiB | 209,743 ms | 127,810 ms |
+
+Die Messwerte stellen Einzelmessungen unter den genannten Testbedingungen dar
+und sind daher nicht als allgemeingültige Leistungswerte des Systems zu
+verstehen.
+
+**Skalierung:** Mit zunehmender Dateigröße steigt der Zeitbedarf für Backup und Wiederherstellung insgesamt an. Die Messwerte zeigen dabei keinen strikt linearen Verlauf. Insbesondere bei der 1-MiB-Datei treten stärkere Schwankungen zwischen den drei Messungen auf.
+
+---
+
+## Anforderungs-Erfüllung
+
+| Anforderung | Test | Status |
+|---|---|---|
+| FA-1: Backup erstellen | TEST-01 | Erfüllt |
+| FA-2: SHA-256-Hash | TEST-01 | Erfüllt |
+| FA-3: Betriebssystembasierter Schreibschutz | TEST-03 | Erfüllt |
+| FA-4: Versionierung | TEST-04 | Erfüllt |
+| FA-5: Recovery-Funktion | TEST-01 | Erfüllt |
+| FA-6: Manipulationserkennung | TEST-02 | Erfüllt |
+
+---
+
+## Zusammenfassung
+
+Die durch die Funktionstests überprüften Anforderungen wurden unter den gewählten Testbedingungen erfüllt. Der Prototyp kann Backups erstellen und wiederherstellen, Manipulationen anhand von Hash-Abweichungen erkennen und Wiederherstellungen bei festgestellter Integritätsverletzung abbrechen. Der getestete Dateisystem-Schreibschutz verhindert Schreibzugriffe unter den gewählten Windows-Testbedingungen. Zudem konnten mehrere Sicherungsversionen getrennt gespeichert werden.
+
+Die Laufzeitmessungen zeigen insgesamt einen steigenden Zeitbedarf bei zunehmender Dateigröße. Ein strikt linearer Zusammenhang konnte anhand der durchgeführten Messungen nicht festgestellt werden.
+
+---
+
+**Dokumentiert:** September 2026
+**Durchführer:** Silas Maurer
